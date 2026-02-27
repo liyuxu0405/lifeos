@@ -1,4 +1,10 @@
+<div align="center">
+  <h1>🧠 LifeOS</h1>
+  <p>
+    <a href="README.md">English</a> | <a href="SETUP.md">简体中文</a>
+  </p>
 # LifeOS 完整安装与配置教程
+</div>
 
 ## 目录
 

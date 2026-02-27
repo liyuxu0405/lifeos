@@ -1,7 +1,8 @@
 <div align="center">
   <h1>🧠 LifeOS</h1>
-  <p><strong>Your second brain, finally with a nervous system.</strong></p>
   <p>
+    <a href="README.md">English</a> | <a href="SETUP.md">简体中文</a>
+  </p>
     An open-source personal context OS that actively learns your patterns,<br/>
     connects your tools, and surfaces insights you didn't know you needed.
   </p>
