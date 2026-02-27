@@ -1,0 +1,43 @@
+# ========================
+# Node.js & 前端 (Vite/React/Vue)
+# ========================
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ========================
+# Tauri & Rust
+# ========================
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# ========================
+# Python 后端
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ========================
+# LifeOS 本地数据与隐私配置
+# ========================
+.env
+apps/backend/.env
+# 忽略本地生成的 SQLite 和向量数据库
+data/
+*.db
+vectors/
+credentials/
+embedding_cache/
+
+# ========================
+# 操作系统生成文件
+# ========================
+.DS_Store
+Thumbs.db
