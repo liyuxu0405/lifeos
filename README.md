@@ -8,8 +8,8 @@
   </p>
 
   <p>
-    <img src="https://img.shields.io/github/stars/lifeos-app/lifeos?style=flat-square&color=purple" alt="Stars" />
-    <img src="https://img.shields.io/github/license/lifeos-app/lifeos?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/github/stars/liyuxu0405/lifeos?style=flat-square&color=purple" alt="Stars" />
+    <img src="https://img.shields.io/github/license/liyuxu0405/lifeos?style=flat-square" alt="License" />
     <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform" />
     <img src="https://img.shields.io/badge/privacy-local%20first-green?style=flat-square" alt="Privacy" />
   </p>
