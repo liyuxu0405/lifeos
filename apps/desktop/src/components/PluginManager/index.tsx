@@ -1,274 +1,180 @@
-import { useEffect, useState } from "react";
-import { useStore } from "../../stores/useStore";
-import { Plugin, ConfigField } from "../../hooks/useLifeOSAPI";
-import { RefreshCw, Check, X, ChevronRight, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+// 使用 import type 导入接口，彻底解决与本地组件名的命名冲突
+import type { Plugin, ConfigField } from "../../hooks/useLifeOSAPI";
+import { api } from "../../hooks/useLifeOSAPI";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  notes: "📝 笔记",
-  code: "💻 代码",
-  calendar: "📅 日历",
-  communication: "💬 沟通",
-  browser: "🌐 浏览器",
-  other: "📦 其他",
-};
-
-export default function PluginManager() {
-  const { plugins, pluginsLoading, loadPlugins, enablePlugin, disablePlugin, syncPlugin } = useStore();
-  const [configuring, setConfiguring] = useState<Plugin | null>(null);
-
-  useEffect(() => {
-    loadPlugins();
-  }, []);
-
-  const byCategory = plugins.reduce((acc, p) => {
-    const cat = p.category || "other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(p);
-    return acc;
-  }, {} as Record<string, Plugin[]>);
-
-  return (
-    <div className="flex h-full">
-      {/* Plugin List */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="border-b border-gray-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">数据源插件</h2>
-          <p className="text-xs text-gray-500">连接你的工具，让 AI 真正了解你</p>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {Object.entries(byCategory).map(([cat, catPlugins]) => (
-            <div key={cat}>
-              <p className="mb-3 text-xs font-medium text-gray-600 uppercase tracking-wider">
-                {CATEGORY_LABELS[cat] || cat}
-              </p>
-              <div className="space-y-2">
-                {catPlugins.map((plugin) => (
-                  <PluginRow
-                    key={plugin.name}
-                    plugin={plugin}
-                    onConfigure={() => setConfiguring(plugin)}
-                    onDisable={() => disablePlugin(plugin.name)}
-                    onSync={() => syncPlugin(plugin.name)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* Community plugins hint */}
-          <div className="rounded-xl border border-dashed border-gray-800 p-4 text-center">
-            <p className="text-sm text-gray-600">想要更多插件？</p>
-            <a
-              href="https://github.com/lifeos-app/lifeos/blob/main/docs/PLUGIN_GUIDE.md"
-              target="_blank"
-              className="mt-1 text-xs text-purple-600 hover:text-purple-400 transition"
-            >
-              查看插件开发指南 →
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* Config Panel */}
-      {configuring && (
-        <ConfigPanel
-          plugin={configuring}
-          onClose={() => setConfiguring(null)}
-          onSave={async (config) => {
-            const result = await enablePlugin(configuring.name, config);
-            if (result.success) setConfiguring(null);
-            return result;
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function PluginRow({
-  plugin,
-  onConfigure,
-  onDisable,
-  onSync,
-}: {
-  plugin: Plugin;
-  onConfigure: () => void;
-  onDisable: () => void;
-  onSync: () => void;
-}) {
-  const [syncing, setSyncing] = useState(false);
-
-  const handleSync = async () => {
-    setSyncing(true);
-    await onSync();
-    setSyncing(false);
-  };
-
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900/50 p-4 transition hover:border-gray-700">
-      <span className="text-2xl shrink-0">{plugin.icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-200">{plugin.display_name}</p>
-        <p className="text-xs text-gray-600 truncate">{plugin.description}</p>
-        {plugin.last_sync && (
-          <p className="text-xs text-gray-700 mt-0.5">
-            上次同步: {new Date(plugin.last_sync).toLocaleString("zh-CN")}
-          </p>
-        )}
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0">
-        {plugin.enabled ? (
-          <>
-            <span className="flex items-center gap-1 rounded-full bg-green-900/40 px-2 py-0.5 text-xs text-green-400">
-              <Check size={10} />
-              已连接
-            </span>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="rounded-lg border border-gray-700 p-1.5 text-gray-500 hover:text-gray-300 transition disabled:opacity-50"
-              title="立即同步"
-            >
-              <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
-            </button>
-            <button
-              onClick={onDisable}
-              className="rounded-lg border border-gray-700 p-1.5 text-gray-500 hover:text-red-400 transition"
-              title="禁用"
-            >
-              <X size={13} />
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={onConfigure}
-            className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-xs text-white hover:bg-purple-500 transition"
-          >
-            连接
-            <ChevronRight size={13} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ConfigPanel({
-  plugin,
-  onClose,
-  onSave,
-}: {
-  plugin: Plugin;
-  onClose: () => void;
-  onSave: (config: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
-}) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError("");
-    const result = await onSave(formData);
-    if (!result.success) {
-      setError(result.error || "配置失败，请检查输入");
-    }
-    setSaving(false);
-  };
-
-  return (
-    <div className="w-96 border-l border-gray-800 bg-gray-950 flex flex-col">
-      <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{plugin.icon}</span>
-          <span className="font-medium text-white">{plugin.display_name}</span>
-        </div>
-        <button onClick={onClose} className="text-gray-600 hover:text-gray-400 transition">
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        {Object.entries(plugin.config_schema).map(([key, field]) => (
-          <ConfigField
-            key={key}
-            fieldKey={key}
-            field={field}
-            value={formData[key] || ""}
-            onChange={(v) => setFormData((prev) => ({ ...prev, [key]: v }))}
-          />
-        ))}
-
-        {error && (
-          <div className="rounded-lg border border-red-800 bg-red-900/20 p-3 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-      </div>
-
-      <div className="border-t border-gray-800 p-5">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-2.5 text-sm font-medium text-white hover:bg-purple-500 transition disabled:opacity-50"
-        >
-          {saving ? (
-            <>
-              <Loader2 size={15} className="animate-spin" />
-              正在连接...
-            </>
-          ) : (
-            "保存并连接"
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ConfigFieldComponent({
-  fieldKey,
+// 子组件：渲染单个配置项
+const ConfigFieldItem = ({
+  label,
   field,
   value,
-  onChange,
+  onChange
 }: {
-  fieldKey: string;
+  label: string;
   field: ConfigField;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const isTextarea = field.type === "textarea";
-
+  value: any;
+  onChange: (val: any) => void
+}) => {
   return (
-    <div className="space-y-1.5">
-      <label className="block text-sm text-gray-300">
-        {field.label}
-        {field.required && <span className="ml-1 text-red-500">*</span>}
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-gray-300 mb-1">
+        {field.label || label} {field.required && <span className="text-red-500">*</span>}
       </label>
-      {field.description && (
-        <p className="text-xs text-gray-600 whitespace-pre-line">{field.description}</p>
-      )}
-      {isTextarea ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          rows={6}
-          className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 placeholder-gray-700 outline-none focus:border-purple-600 transition font-mono"
-        />
-      ) : (
+
+      {field.type === "string" && (
         <input
           type={field.secret ? "password" : "text"}
-          value={value}
+          className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white focus:border-purple-500 outline-none transition-colors"
+          value={value || ""}
+          placeholder={field.placeholder || `请输入 ${field.label}...`}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 placeholder-gray-700 outline-none focus:border-purple-600 transition"
         />
+      )}
+
+      {field.description && (
+        <p className="text-xs text-gray-500 mt-1">{field.description}</p>
       )}
     </div>
   );
-}
+};
 
-const ConfigField = ConfigFieldComponent;
+export const PluginManager: React.FC = () => {
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingPlugin, setEditingPlugin] = useState<string | null>(null);
+  const [configValues, setConfigValues] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    fetchPlugins();
+  }, []);
+
+  const fetchPlugins = async () => {
+    try {
+      const data = await api.listPlugins();
+      setPlugins(data.plugins);
+    } catch (err) {
+      console.error("加载插件失败:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle = async (plugin: Plugin) => {
+    if (plugin.enabled) {
+      if (confirm(`确定要禁用 ${plugin.display_name} 吗？`)) {
+        await api.disablePlugin(plugin.name);
+        fetchPlugins();
+      }
+    } else {
+      setEditingPlugin(plugin.name);
+      setConfigValues({});
+    }
+  };
+
+  const handleEnable = async (name: string) => {
+    try {
+      const res = await api.enablePlugin(name, configValues);
+      if (res.success) {
+        setEditingPlugin(null);
+        fetchPlugins();
+      } else {
+        alert(`开启失败: ${res.error}`);
+      }
+    } catch (err) {
+      alert("提交配置时发生错误");
+    }
+  };
+
+  if (loading) return <div className="p-8 text-gray-400">正在同步插件状态...</div>;
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold text-white">插件管理</h1>
+        <button
+          onClick={fetchPlugins}
+          className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+        >
+          刷新列表
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {plugins.map((plugin) => (
+          <div key={plugin.name} className="bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-700 transition-all">
+            <div className="flex items-start justify-between">
+              <div className="flex gap-4">
+                <div className="text-3xl">{plugin.icon || "🧩"}</div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{plugin.display_name}</h3>
+                  <p className="text-sm text-gray-400 mt-1">{plugin.description}</p>
+                  <div className="flex gap-3 mt-3">
+                    <span className="text-xs bg-gray-800 text-gray-400 px-2 py-1 rounded">
+                      {plugin.category}
+                    </span>
+                    {plugin.last_sync && (
+                      <span className="text-xs text-gray-500 py-1">
+                        上次同步: {new Date(plugin.last_sync).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-2">
+                <button
+                  onClick={() => handleToggle(plugin)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    plugin.enabled 
+                      ? "bg-red-900/20 text-red-400 hover:bg-red-900/30" 
+                      : "bg-purple-600 text-white hover:bg-purple-500"
+                  }`}
+                >
+                  {plugin.enabled ? "禁用" : "去开启"}
+                </button>
+                {plugin.enabled && (
+                   <button
+                    onClick={() => api.syncPlugin(plugin.name).then(() => fetchPlugins())}
+                    className="text-xs text-gray-500 hover:text-purple-400"
+                   >
+                     立即同步
+                   </button>
+                )}
+              </div>
+            </div>
+
+            {/* 配置面板 */}
+            {editingPlugin === plugin.name && (
+              <div className="mt-6 pt-6 border-t border-gray-800 animate-in fade-in slide-in-from-top-2">
+                <h4 className="text-sm font-bold text-purple-400 mb-4">配置选项</h4>
+                {Object.entries(plugin.config_schema).map(([key, field]) => (
+                  <ConfigFieldItem
+                    key={key}
+                    label={key}
+                    field={field}
+                    value={configValues[key]}
+                    onChange={(val) => setConfigValues({ ...configValues, [key]: val })}
+                  />
+                ))}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => handleEnable(plugin.name)}
+                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg font-medium transition-colors"
+                  >
+                    保存并开启
+                  </button>
+                  <button
+                    onClick={() => setEditingPlugin(null)}
+                    className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

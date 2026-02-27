@@ -8,7 +8,7 @@ import DailyBrief from "./components/DailyBrief";
 import ChatInterface from "./components/ChatInterface";
 import Timeline from "./components/Timeline";
 import InsightsPanel from "./components/Insights";
-import PluginManager from "./components/PluginManager";
+import { PluginManager } from "./components/PluginManager";
 import SettingsPanel from "./components/Settings";
 
 const NAV_ITEMS = [

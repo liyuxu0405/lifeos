@@ -38,11 +38,5 @@
       "icons/icon.ico"
     ]
   },
-  "plugins": {
-    "notification": {},
-    "autostart": {
-      "args": false,
-      "macosLaunchAgent": false
-    }
-  }
+  "plugins": {}
 }
